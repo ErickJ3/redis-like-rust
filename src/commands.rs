@@ -29,70 +29,13 @@ impl Command {
 
                 match command.as_str() {
                     "PING" => Ok(Command::Ping),
-                    "ECHO" => {
-                        if items.len() != 1 {
-                            return Err(Error::Command(
-                                "ECHO requires exactly one argument".into(),
-                            ));
-                        }
-                        if let Resp::BulkString(message) = items.remove(0) {
-                            Ok(Command::Echo(message))
-                        } else {
-                            Err(Error::Command("Invalid ECHO argument".into()))
-                        }
-                    }
-                    "SET" => {
-                        let mut expiry = None;
-
-                        match items.len() {
-                            2 => {
-                                if let (Resp::BulkString(key), Resp::BulkString(value)) =
-                                    (items.remove(0), items.remove(0))
-                                {
-                                    Ok(Command::Set { key, value, expiry })
-                                } else {
-                                    Err(Error::Command("Invalid SET arguments".into()))
-                                }
-                            }
-                            4 => {
-                                if let (
-                                    Resp::BulkString(key),
-                                    Resp::BulkString(value),
-                                    Resp::BulkString(opt),
-                                    Resp::BulkString(px),
-                                ) = (
-                                    items.remove(0),
-                                    items.remove(0),
-                                    items.remove(0),
-                                    items.remove(0),
-                                ) {
-                                    if opt.to_uppercase() == "PX" {
-                                        if let Ok(ms) = px.parse::<u64>() {
-                                            expiry = Some(Duration::from_millis(ms));
-                                            Ok(Command::Set { key, value, expiry })
-                                        } else {
-                                            Err(Error::Command("Invalid PX value".into()))
-                                        }
-                                    } else {
-                                        Err(Error::Command("Invalid SET option".into()))
-                                    }
-                                } else {
-                                    Err(Error::Command("Invalid SET arguments".into()))
-                                }
-                            }
-                            _ => Err(Error::Command("Wrong number of SET arguments".into())),
-                        }
-                    }
-                    "GET" => {
-                        if items.len() != 1 {
-                            return Err(Error::Command("GET requires exactly one argument".into()));
-                        }
-                        if let Resp::BulkString(key) = items.remove(0) {
-                            Ok(Command::Get(key))
-                        } else {
-                            Err(Error::Command("Invalid GET argument".into()))
-                        }
-                    }
+                    "ECHO" => Self::echo(items),
+                    "SET" => match items.len() {
+                        2 => Self::set(items),
+                        4 => Self::set_with_expiry(items),
+                        _ => Err(Error::Command("Wrong number of SET arguments".into())),
+                    },
+                    "GET" => Self::get(items),
                     _ => Err(Error::Command(format!("Unknown command: {}", command))),
                 }
             }
@@ -116,5 +59,71 @@ impl Command {
                 Err(_) => Resp::Error("ERR failed to get value".into()),
             },
         }
+    }
+
+    fn get(mut items: Vec<Resp>) -> Result<Command> {
+        if items.len() != 1 {
+            return Err(Error::Command("GET requires exactly one argument".into()));
+        }
+        if let Resp::BulkString(key) = items.remove(0) {
+            Ok(Command::Get(key))
+        } else {
+            Err(Error::Command("Invalid GET argument".into()))
+        }
+    }
+
+    fn echo(mut items: Vec<Resp>) -> Result<Command> {
+        if items.len() != 1 {
+            return Err(Error::Command("ECHO requires exactly one argument".into()));
+        }
+        if let Resp::BulkString(message) = items.remove(0) {
+            Ok(Command::Echo(message))
+        } else {
+            Err(Error::Command("Invalid ECHO argument".into()))
+        }
+    }
+
+    fn set(mut items: Vec<Resp>) -> Result<Self> {
+        if let (Resp::BulkString(key), Resp::BulkString(value)) = (items.remove(0), items.remove(0))
+        {
+            Ok(Self::Set {
+                key,
+                value,
+                expiry: None,
+            })
+        } else {
+            Err(Error::Command("Invalid SET arguments".into()))
+        }
+    }
+
+    fn set_with_expiry(mut items: Vec<Resp>) -> Result<Self> {
+        let (key, value, opt, px) = match (
+            items.remove(0),
+            items.remove(0),
+            items.remove(0),
+            items.remove(0),
+        ) {
+            (
+                Resp::BulkString(k),
+                Resp::BulkString(v),
+                Resp::BulkString(o),
+                Resp::BulkString(p),
+            ) => (k, v, o, p),
+            _ => return Err(Error::Command("Invalid SET arguments".into())),
+        };
+
+        if opt.to_uppercase() != "PX" {
+            return Err(Error::Command("Invalid SET option".into()));
+        }
+
+        let ms = px
+            .parse::<u64>()
+            .map_err(|_| Error::Command("Invalid PX value".into()))?;
+
+        Ok(Self::Set {
+            key,
+            value,
+            expiry: Some(Duration::from_millis(ms)),
+        })
     }
 }
