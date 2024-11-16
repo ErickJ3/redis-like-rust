@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
 
     let addr = "127.0.0.1:6379";
     let listener = TcpListener::bind(addr).await?;
-    let storage = Storage::new();
+    let storage = Storage::new()?;
 
     info!("Server listening on {}", addr);
 
