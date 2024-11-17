@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use thiserror::Error;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -8,6 +9,7 @@ use tracing::{error, info, Level};
 mod commands;
 mod resp;
 mod storage;
+mod persistence;
 
 use commands::Command;
 use resp::Resp;
@@ -27,7 +29,7 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-async fn handle_client(mut stream: TcpStream, storage: Storage) {
+async fn handle_client(mut stream: TcpStream, storage: Arc<Storage>) {
     let mut buffer = vec![0; 1024];
 
     loop {
@@ -62,7 +64,7 @@ async fn main() -> Result<()> {
 
     let addr = "127.0.0.1:6379";
     let listener = TcpListener::bind(addr).await?;
-    let storage = Storage::new()?;
+    let storage = Arc::new(Storage::new()?);
 
     info!("Server listening on {}", addr);
 
