@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod aof;
 pub mod rdb;
+pub mod storage;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValueEntry {

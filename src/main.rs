@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use persistence::storage::Storage;
 use thiserror::Error;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -8,12 +9,10 @@ use tracing::{error, info, Level};
 
 mod commands;
 mod resp;
-mod storage;
 mod persistence;
 
 use commands::Command;
 use resp::Resp;
-use storage::Storage;
 
 #[derive(Error, Debug)]
 pub enum Error {
