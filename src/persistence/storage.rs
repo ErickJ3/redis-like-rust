@@ -1,5 +1,5 @@
 use std::{
-    io,
+    fs, io,
     path::PathBuf,
     sync::Arc,
     time::{Duration, SystemTime},
@@ -18,10 +18,15 @@ pub struct Storage {
 
 impl Storage {
     pub fn new() -> io::Result<Self> {
-        Self::new_with_paths(PathBuf::from("dump.rdb"), PathBuf::from("appendonly.aof"))
+        Self::new_with_paths(
+            PathBuf::from("data/dump.rdb"),
+            PathBuf::from("data/appendonly.aof"),
+        )
     }
 
     pub fn new_with_paths(rdb_path: PathBuf, aof_path: PathBuf) -> io::Result<Self> {
+        fs::create_dir_all("data")?;
+
         info!(
             "Initializing storage with RDB: {:?}, AOF: {:?}",
             rdb_path, aof_path
