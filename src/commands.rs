@@ -48,12 +48,12 @@ impl Command {
             Command::Ping => Resp::SimpleString("PONG".into()),
             Command::Echo(message) => Resp::SimpleString(message.clone()),
             Command::Set { key, value, expiry } => {
-                match storage.set(key.clone(), value.clone(), *expiry) {
+                match storage.set(key.clone(), value.clone(), *expiry).await {
                     Ok(()) => Resp::SimpleString("OK".into()),
                     Err(_) => Resp::Error("ERR failed to set value".into()),
                 }
             }
-            Command::Get(key) => match storage.get(key) {
+            Command::Get(key) => match storage.get(&key).await {
                 Ok(Some(value)) => Resp::BulkString(value),
                 Ok(None) => Resp::Null,
                 Err(_) => Resp::Error("ERR failed to get value".into()),
